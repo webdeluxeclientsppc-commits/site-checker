@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 СТАТИСТИКА:
 - Всього сайтів: ${total}
 - Критичні проблеми: ${critical}
-- Попередження: ${warning}  
+- Попередження: ${warning}
 - Все ок: ${ok}
 
 ТИПОВІ ПРОБЛЕМИ:
@@ -60,21 +60,29 @@ ${warnSites || 'немає'}
 Відповідай українською. Будь конкретним і практичним. Не більше 400 слів.`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'gpt-4o-mini',
         max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: 'Ти досвідчений PPC маркетолог. Відповідай чітко і по справі українською мовою.' },
+          { role: 'user', content: prompt },
+        ],
       }),
     });
 
     const data = await response.json();
-    const text = data.content?.[0]?.text || 'Не вдалося отримати AI аналіз';
+
+    if (data.error) {
+      return res.status(500).json({ error: data.error.message });
+    }
+
+    const text = data.choices?.[0]?.message?.content || 'Не вдалося отримати аналіз';
     res.status(200).json({ summary: text });
   } catch (e) {
     res.status(500).json({ error: e.message });
